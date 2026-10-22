@@ -20,40 +20,46 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Preparar Java 17
+      - name: Configurar Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Instalar herramientas
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y unzip
+      - name: Instalar unzip
+        run: sudo apt-get update && sudo apt-get install -y unzip
 
-      - name: Descomprimir proyecto Nexora
+      - name: Verificar y descomprimir ZIP
+        shell: bash
         run: |
-          ZIP="Nexora-2.0-Beta07-Repositorio-Limpio.zip"
+          set -euo pipefail
+
+          ZIP="Nexora-2.0-Beta07-Repositorio-Limpio-1.zip"
 
           if [ ! -f "$ZIP" ]; then
-            echo "ERROR: No se encuentra $ZIP"
-            ls -la
+            echo "ERROR: No se encuentra el ZIP."
+            echo "Archivos disponibles:"
+            find . -maxdepth 2 -type f
             exit 1
           fi
 
-          mkdir -p /tmp/nexora
           unzip -t "$ZIP"
-          unzip -o "$ZIP" -d /tmp/nexora
+
+          mkdir -p /tmp/nexora
+          unzip -oq "$ZIP" -d /tmp/nexora
 
           SETTINGS="$(find /tmp/nexora -name settings.gradle.kts -type f -print -quit)"
 
           if [ -z "$SETTINGS" ]; then
-            echo "ERROR: El ZIP no contiene settings.gradle.kts"
-            find /tmp/nexora -maxdepth 4 -type f
+            echo "ERROR: El ZIP no contiene settings.gradle.kts."
+            echo "Contenido encontrado:"
+            find /tmp/nexora -maxdepth 4 -type f | head -200
             exit 1
           fi
 
           PROJECT_DIR="$(dirname "$SETTINGS")"
+          echo "Proyecto encontrado en: $PROJECT_DIR"
+
           cp -a "$PROJECT_DIR"/. .
 
           test -f settings.gradle.kts
@@ -61,13 +67,20 @@ jobs:
           test -f app/build.gradle.kts
           test -f app/src/main/AndroidManifest.xml
 
-      - name: Comprobar proyecto
+          echo "Estructura Android verificada."
+
+      - name: Revisar cambios
         run: |
-          echo "Archivos del proyecto:"
+          echo "Configuración Gradle:"
+          cat settings.gradle.kts
+          echo "Archivos principales:"
           find app/src/main -maxdepth 5 -type f | head -100
 
       - name: Publicar archivos del proyecto
+        continue-on-error: true
         run: |
+          set -e
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
@@ -77,13 +90,25 @@ jobs:
           if ! git diff --cached --quiet; then
             git commit -m "Descomprimir proyecto Nexora Beta 07"
             git push origin HEAD:main
+          else
+            echo "No hay cambios nuevos que publicar."
           fi
 
-      - name: Preparar Gradle
+      - name: Configurar Gradle
         uses: gradle/actions/setup-gradle@v4
 
       - name: Compilar APK
         run: gradle --no-daemon assembleDebug
+
+      - name: Verificar APK generado
+        run: |
+          set -e
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -name '*.apk' -type f -print -quit)"
+          if [ -z "$APK" ]; then
+            echo "ERROR: No se generó el APK."
+            exit 1
+          fi
+          ls -lh "$APK"
 
       - name: Publicar APK descargable
         uses: actions/upload-artifact@v4
@@ -91,3 +116,4 @@ jobs:
           name: Nexora-Android-APK
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 14
