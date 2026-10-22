@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'Nexora-2.0-Beta07-Repositorio-Limpio.zip'
+      - 'Nexora-2.0-Beta07-Repositorio-Limpio1.zip'
       - '.github/workflows/main.yml'
 
 permissions:
