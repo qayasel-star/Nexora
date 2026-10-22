@@ -1,4 +1,18 @@
 
+
+      - name: Comprobar que el ZIP es válido
+        run: |
+          ZIP="Nexora-2.0-Beta07-Repositorio-Limpio.zip"
+
+          ls -lh "$ZIP"
+          file "$ZIP"
+
+          if ! unzip -t "$ZIP"; then
+            echo "::error::El archivo no es un ZIP válido o está incompleto."
+            echo "Vuelve a subir el ZIP original descargado de ChatGPT."
+            exit 1
+          fi
+
 name: Descomprimir y compilar Nexora
 
 on:
