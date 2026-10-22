@@ -1,6 +1,6 @@
 
 
-      - name: Comprobar que el ZIP es válido
+     name: Comprobar que el ZIP es válido
         run: |
           ZIP="Nexora-2.0-Beta07-Repositorio-Limpio.zip"
 
